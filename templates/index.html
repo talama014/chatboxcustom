@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Notification</title>
+    <style>
+    /* Main chatbox container */
+    #messages {
+        height: 90vh; /* 90% of the screen height */
+        overflow-y: auto;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.3); /* Light border with transparency */
+        padding: 20px;
+        margin-bottom: 15px;
+        background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent black background */
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+        font-family: 'Helvetica Neue', sans-serif;
+        scroll-behavior: smooth;
+        color: #fff; /* White text color for better contrast */
+    }
+
+    /* Individual message styling - larger padding and margin */
+    .message {
+        padding: 30px;
+        margin: 30px 0;
+        border-radius: 8px;
+        background-color: rgba(255, 255, 255, 0.2); /* Semi-transparent white */
+        border-left: 6px solid rgba(0, 123, 255, 0.8); /* Slightly opaque accent color */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.3s ease;
+        opacity: 0;
+        animation: fadeIn 1s forwards;
+    }
+
+    /* Highlight name part and bolden message */
+    .message p {
+        margin: 0;
+        color: #fff; /* White text for better contrast */
+        font-size: 22px;
+        line-height: 1.8;
+        font-weight: bold;
+    }
+
+    /* Differentiate and highlight the name */
+    .message p span.name {
+        color: rgba(0, 123, 255, 1); /* Blue for the name */
+        font-weight: bold;
+    }
+
+    /* Different style for user's own messages */
+    .message.user {
+        background-color: rgba(224, 247, 250, 0.2); /* Semi-transparent background */
+        border-left-color: rgba(0, 172, 193, 0.8); /* Accent color for user messages */
+    }
+
+    /* Custom scrollbar */
+    #messages::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    #messages::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 123, 255, 0.6); /* Transparent scrollbar */
+        border-radius: 4px;
+    }
+
+    #messages::-webkit-scrollbar-track {
+        background-color: transparent;
+    }
+
+    /* Fade-in animation for new messages */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    </style>
+</head>
+<body>
+    <div id="messages">
+        <div class="message">
+            <p><span class="name">plaeri:</span> Chào các bạn đã đến với stream của mình, hãy gọi mình bằng cách nhắn tin có từ plaeri nhé ;)))</p>
+        </div>
+        <!-- More messages -->
+    </div>
+    
+    <!-- Button to enable audio play -->
+    <button id="playAudioButton">Enable Notifications</button>
+
+    <!-- Audio element -->
+    <audio id="notificationSound" src="/static/sounds/a.m4a" preload="auto"></audio>
+
+    <!-- Thêm Socket.IO -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+    <script>
+        const socket = io.connect('http://localhost:5000');  // Kết nối đến Flask-SocketIO
+        const messagesContainer = document.getElementById('messages');
+        const notificationSound = document.getElementById('notificationSound');
+
+        // Initially, disable the playAudio function
+        let canPlayAudio = false;
+
+        // Button event to allow playing audio
+        document.getElementById('playAudioButton').addEventListener('click', () => {
+            canPlayAudio = true;  // Enable audio playing after user interaction
+        });
+
+        // Tự động cuộn xuống cuối mỗi khi có tin nhắn mới
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Play audio only if allowed
+            if (canPlayAudio) {
+                notificationSound.play();
+            }
+        }
+
+        // Khi nhận được sự kiện 'update_messages', cập nhật tin nhắn
+        socket.on('update_messages', messages => {
+
+            messages.forEach(message => {
+                const parts = message.split(':'); // Split the message by colon
+                const name = parts[0]; // The part before the colon is the name
+                const messageContent = parts.slice(1).join(':'); // The rest is the message content
+
+                // Create the message element with the desired structure
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.innerHTML = `<p><span class="name">${name}:</span> ${messageContent}</p>`;
+
+                // Append the new message to the container
+                messagesContainer.appendChild(messageElement);
+            });
+            scrollToBottom();  // Scroll down to the latest message
+        });
+
+        // Gửi yêu cầu lấy tin nhắn từ server sau khi kết nối thành công
+        socket.on('connect', () => {
+            socket.emit('fetch_messages');
+        });
+    </script>
+</body>
+</html>
